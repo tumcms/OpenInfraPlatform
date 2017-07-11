@@ -1,3 +1,20 @@
+#
+#    Copyright (c) 2017 Technical University of Munich
+#    Chair of Computational Modeling and Simulation.
+#
+#    TUM Open Infra Platform is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License Version 3
+#    as published by the Free Software Foundation.
+#
+#    TUM Open Infra Platform is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
 add_definitions(-DBLUEINFRASTRUCTURE_EXPORT)
 set(CMAKE_DEBUG_POSTFIX "d")
 
@@ -57,14 +74,14 @@ include_directories(
 	${Boost_INCLUDE_DIR} 
 	${PYTHON_INCLUDE_DIRS}
 	${VLD_INCLUDE_DIR}
-	${BLUEFRAMEWORK3_INCLUDE_DIR}
+	${BLUEFRAMEWORK_INCLUDE_DIR}
 	${EIGEN3_INCLUDE_DIR}
 	src
-	${LIBLAS_INCLUDE_DIR}
+	${LIBLAS_INCLUDE_DIRS}
 	../external/QtXlsxWriter/src/xlsx
 	${OKLABI_ROOT_DIR}/Kern-C++
 	${OKLABI_ROOT_DIR}/Dienst
-	${QHULL_INCLUDE_DIR}
+	${QHULL_INCLUDE_DIRS}
 )
 
 # Create a target for the library
@@ -101,16 +118,16 @@ if(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 		# Boost
 		${Boost_LIBRARIES}
 		# BlueFramework
-		${BLUEFRAMEWORK3_LIBRARIES}
+		${BLUEFRAMEWORK_LIBRARIES}
 		# Python
 		${PYTHON_LIBRARIES}
 		# External libs
 		QtXlsxWriter
-		${LIBLAS_LIB}
+		${LIBLAS_LIBRARIES}
 		# Oklabi
 		${OKLABI_LIBRARIES}
 		#
-		${QHULL_STATIC_LIB}
+		${QHULL_STATIC_LIBRARIES}
 		)
 else(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 	target_link_libraries( OpenInfraPlatform.Infrastructure
@@ -120,16 +137,16 @@ else(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 		# Boost
 		${Boost_LIBRARIES}		
 		# BlueFramework
-		${BLUEFRAMEWORK3_LIBRARIES}	
+		${BLUEFRAMEWORK_LIBRARIES}	
 		# Python
 		${PYTHON_LIBRARIES}
 		# External libs
 		QtXlsxWriter
-		${LIBLAS_LIB}
+		${LIBLAS_LIBRARIES}
 		# Oklabi
 		${OKLABI_LIBRARIES}
 		#
-		${QHULL_STATIC_LIB}
+		${QHULL_STATIC_LIBRARIES}
 	)
 endif(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 
