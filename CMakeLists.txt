@@ -41,18 +41,26 @@ else()
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/RelWithDebInfo)
 endif()
 
-#------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
+# Check for Microsoft VisualStudio version and processor architecture.
 # Some checks to ensure that the prerequisites are ok
 #------------------------------------------------------------------------------
 
-if(NOT MSVC14)
-	message("Please switch to Visual Studio 14 2015.")
+if(MSVC_VERSION EQUAL 1900)
+	set(MSVC_VERSION_STRING "vs2015")
+	set(MSVC_VERSION_YEAR "2015")
+	message("Welcome to Visual Studio 14 2015.")
+elseif(MSVC_VERSION EQUAL 1910)
+	set(MSVC_VERSION_STRING "vs2017")
+	set(MSVC_VERSION_YEAR "2017")
+	message("Welcome to Visual Studio 15 2017.")
+else()
+	message("Please switch to Visual Studio 14 2015 or Visual Studio 15 2017.")
 	return()
 endif()
 
-if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message("Please switch to x64 build.")
 	return()
 endif()
@@ -64,10 +72,10 @@ option(OIP_USE_PREBUILD_EARLYBINDING_LIBS "Set to OFF to build early binding by 
 
 if(OIP_USE_PREDEFINED_THIRDPARTY_PATH)
 	# Try to find Boost, Eigen3, Qt5 and other dependencies without user input
-	find_path(BOOST_ROOT NAMES boost/version.hpp HINTS "C:\\thirdparty\\vs2015\\x64\\boost_1_64_0")
-	find_path(EIGEN3_INCLUDE_DIR NAMES Eigen/Core HINTS "C:\\thirdparty\\vs2015\\x64\\Eigen_3.3.4" "C:\\thirdparty\\vs2015\\x64\\Eigen_3.3.3")
-	find_path(CMAKE_PREFIX_PATH NAMES include/QtCore/QObject HINTS "C:\\Qt\\Qt5.9.1\\5.9.1\\msvc2015_64" "C:\\Qt\\Qt5.9.0\\5.9\\msvc2015_64")
-	find_path(GTEST_ROOT NAMES googletest/include/gtest/gtest.h HINTS "C:\\thirdparty\\vs2015\\x64\\googletest-release-1.8.0" "C:\\thirdparty\\vs2015\\x64\\googletest-1.8.0")
+	find_path(BOOST_ROOT NAMES boost/version.hpp HINTS "C:\\thirdparty\\${MSVC_VERSION_STRING}\\x64\\boost_1_64_0" "C:\\thirdparty\\${MSVC_VERSION_STRING}\\x64\\boost_1_63_0")
+	find_path(EIGEN3_INCLUDE_DIR NAMES Eigen/Core HINTS "C:\\thirdparty\\${MSVC_VERSION_STRING}\\x64\\Eigen_3.3.4")
+	find_path(CMAKE_PREFIX_PATH NAMES include/QtCore/QObject HINTS "C:\\Qt\\Qt5.9.0\\5.9\\msvc${MSVC_VERSION_YEAR}_64" "C:\\Qt\\5.9\\msvc${MSVC_VERSION_YEAR}_64" "C:\\Qt\\Qt5.9.1\\5.9.1\\msvc${MSVC_VERSION_YEAR}_64")
+	find_path(GTEST_ROOT NAMES googletest/include/gtest/gtest.h HINTS "C:\\thirdparty\\${MSVC_VERSION_STRING}\\x64\\googletest-release-1.8.0" "C:\\thirdparty\\${MSVC_VERSION_STRING}\\x64\\googletest-1.8.0")
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG     ${CMAKE_BINARY_DIR}/Debug)
@@ -98,9 +106,9 @@ find_package(Boost				1.63.0 COMPONENTS signals system filesystem thread program
 find_package(VLD 					   REQUIRED)
 
 #Find BlueFramework root dir
-#set(BLUEFRAMEWORK3_USE_INSTALLED FALSE CACHE BOOL "bool")
-#set(BLUEFRAMEWORK3_ROOT "" CACHE PATH "path")
-find_package(BlueFramework3		3.0.491 COMPONENTS Core Engine Application ImageProcessing Rasterizer D3D11RenderSystem D3D12RenderSystem REQUIRED)
+#set(BLUEFRAMEWORK_USE_INSTALLED FALSE CACHE BOOL "bool")
+#set(BLUEFRAMEWORK_ROOT "" CACHE PATH "path")
+find_package(BlueFramework		COMPONENTS Core Engine Application ImageProcessing Rasterizer D3D11RenderSystem D3D12RenderSystem REQUIRED)
 
 #Find Eigen
 find_package(Eigen3             3.3.2  REQUIRED)
@@ -110,32 +118,13 @@ find_package(PythonLibs 		3.5.2  REQUIRED)
 
 # Find the Oklabi libraries
 find_package(Oklabi)
-
-
-#Gtest
-if(NOT GTEST_ROOT)
-	include(external/cmake/InstallGTest.cmake)
-endif()
-
 find_package(gtest REQUIRED) #reduce to this line
 
-if(NOT gtest OR NOT GTEST_ROOT)
-	include(external/cmake/FindGTest.cmake)
-endif()
-GTEST_COPY_BINARIES(${CMAKE_BINARY_DIR})
-
 #ZLib
-if(NOT ZLIB_ROOT)
-	include(external/cmake/InstallZLIB.cmake)
-endif()
-
-if(NOT ZLIB_LIBRARY)
-	include(external/cmake/FindZLIB.cmake)
-endif()
-if(ZLIB_LIBRARY_RELEASE AND ZLIB_LIBRARY_DEBUG)
-	set(ZLIB_LIBRARY debug "${ZLIB_LIBRARY_DEBUG}" optimized "${ZLIB_LIBRARY_RELEASE}")
-endif()
 find_package(ZLIB REQUIRED)
+
+find_package(libLAS REQUIRED)
+find_package(qhull REQUIRED)
 
 
 # Find the Qt components
@@ -154,7 +143,7 @@ set(QT5_COMPONENTS
 	Location)
 
 foreach(Component ${QT5_COMPONENTS})
-	find_package( Qt5 5.7.0 COMPONENTS ${Component}	REQUIRED)
+	find_package( Qt5 5.9.0 COMPONENTS ${Component}	REQUIRED)
 	if(TARGET ${Qt5${Component}_LIBRARIES})
 		get_target_property(Qt5${Component}_location ${Qt5${Component}_LIBRARIES} LOCATION_Release)
 		set(QT5_DLLS_RELEASE ${QT5_DLLS_RELEASE} ${Qt5${Component}_location})
@@ -163,11 +152,57 @@ foreach(Component ${QT5_COMPONENTS})
 	endif()
 endforeach()
 
+set(Qt5_IMAGEFORMATS_PLUGINS
+	QGifPlugin
+	QICNSPlugin
+	QICOPlugin
+	QJpegPlugin
+	QTgaPlugin
+	QTiffPlugin
+	QWbmpPlugin
+	QWebpPlugin
+	QSvgPlugin
+)
+
+set(Qt5_GEOSERVICES_PLUGINS
+	QGeoServiceProviderFactoryOsm
+	QGeoServiceProviderFactoryNokia
+	QGeoServiceProviderFactoryMapbox
+	QGeoServiceProviderFactoryItemsOverlay
+	GeoServiceProviderFactoryEsri
+)
+
+foreach(plugin ${Qt5_GEOSERVICES_PLUGINS})
+	include(${Qt5Location_DIR}/Qt5Location_${plugin}.cmake)
+endforeach()
+
+set(Qt5_PLATFORMS_PLUGINS
+	QWindowsIntegrationPlugin
+	QWindowsDirect2DIntegrationPlugin
+	QMinimalIntegrationPlugin
+	QOffscreenIntegrationPlugin
+)
+
+set(Qt5_NETWORK_PLUGINS
+	QNativeWifiEnginePlugin
+	QGenericEnginePlugin
+)
+
+set(Qt5_ICONENGINES_PLUGINS
+	QSvgIconPlugin
+)
+
 string(REPLACE "lib/cmake/Qt5" "bin" Qt5_BIN_DIR "${Qt5_DIR}")
 
 macro(addQt5Dll lib)
 	set(QT5_DLLS_RELEASE ${QT5_DLLS_RELEASE} ${Qt5_BIN_DIR}/Qt5${lib}.dll)
 	set(QT5_DLLS_DEBUG ${QT5_DLLS_DEBUG} ${Qt5_BIN_DIR}/Qt5${lib}d.dll)
+endmacro()
+
+macro(addQt5PluginDll plugin output)
+	get_target_property(_loc Qt5::${plugin} LOCATION)
+	list(APPEND ${output} ${_loc})
+	#message("Plugin Qt5::${plugin} is at location ${_loc}")
 endmacro()
 
 addQt5Dll(Gui)
@@ -179,11 +214,27 @@ addQt5Dll(Sensors)
 addQt5Dll(Sql)
 addQt5Dll(WebChannel)
 
+foreach(plugin ${Qt5_PLATFORMS_PLUGINS})
+	addQt5PluginDll(${plugin} Qt5_PLATFORMS_PLUGINS_DLLS)
+endforeach()
+foreach(plugin ${Qt5_IMAGEFORMATS_PLUGINS})
+	addQt5PluginDll(${plugin} Qt5_IMAGEFORMATS_PLUGINS_DLLS)
+endforeach()
+foreach(plugin ${Qt5_GEOSERVICES_PLUGINS})
+	addQt5PluginDll(${plugin} Qt5_GEOSERVICES_PLUGINS_DLLS)
+endforeach()
+foreach(plugin ${Qt5_NETWORK_PLUGINS})
+	addQt5PluginDll(${plugin} Qt5_NETWORK_PLUGINS_DLLS)
+endforeach()
+foreach(plugin ${Qt5_ICONENGINES_PLUGINS})
+	addQt5PluginDll(${plugin} Qt5_ICONENGINES_PLUGINS_DLLS)
+endforeach()
+
 include_directories(
 	${CMAKE_CURRENT_BINARY_DIR} # Qt generated files will be located here
 	${Boost_INCLUDE_DIR}
 	${VLD_INCLUDE_DIR}
-	${BLUEFRAMEWORK3_INCLUDE_DIR}
+	${BLUEFRAMEWORK_INCLUDE_DIR}
 	${EIGEN3_INCLUDE_DIR}
 	${PYTHON_INCLUDE_DIRS}
 	#DirectX for rendering
@@ -194,7 +245,7 @@ include_directories(
 	external/QSimpleUpdater/src
 	external/QSimpleUpdater/dialogs
 	Infrastructure/canonicalHeaders
-	${ZLIB_INCLUDE_DIR}
+	${ZLIB_INCLUDE_DIRS}
 )
 
 link_directories(
@@ -223,7 +274,7 @@ link_directories(
 #ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 # BlueFramework Copy Binaries
-BLUEFRAMEWORK3_COPY_BINARIES(${CMAKE_BINARY_DIR})
+BLUEFRAMEWORK_COPY_BINARIES(${CMAKE_BINARY_DIR})
 
 # Oklabi Copy Binaries
 OKLABI_COPY_BINARIES(${CMAKE_BINARY_DIR})
@@ -233,23 +284,6 @@ add_subdirectory(external/QtXlsxWriter)
 
 # QSimpleUpdater
 add_subdirectory(external/QSimpleUpdater)
-
-# libLAS
-#add_subdirectory(external/libLAS-1.7.0)
-
-if(NOT LIBLAS_ROOT)
-	include(external/cmake/InstallLiblas.cmake)
-endif()
-include(external/cmake/FindLiblas.cmake)
-LIBLAS_COPY_BINARIES(${CMAKE_BINARY_DIR})
-
-if(NOT QHULL_ROOT)
-	include(external/cmake/InstallQhull.cmake)
-endif()
-include(external/cmake/FindQhull.cmake)
-
-#add_subdirectory(${PROJECT_SOURCE_DIR}/external/qhull)
-#include_directories(external/qhull/src)
 
 #####################################################################################################
 # add carve
@@ -502,15 +536,15 @@ if(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 		# Qt
 		Qt5::WinMain  # New target available via find_package ( Qt5Core )
 		# BlueFramework
-		${BLUEFRAMEWORK3_LIBRARIES}
+		${BLUEFRAMEWORK_LIBRARIES}
 		# External libs
 		QtXlsxWriter
 		QSimpleUpdater
-		${LIBLAS_LIB}
+		${LIBLAS_LIBRARIES}
 		carve
 		# Python
 		${PYTHON_LIBRARIES}
-		${ZLIB_LIB}
+		${ZLIB_LIBRARIES}
 	)
 elseif(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 	target_link_libraries( OpenInfraPlatform.UI
@@ -525,15 +559,15 @@ elseif(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 		# Qt
 		Qt5::WinMain  # New target available via find_package ( Qt5Core )
 		# BlueFramework
-		${BLUEFRAMEWORK3_LIBRARIES}
+		${BLUEFRAMEWORK_LIBRARIES}
 		# External libs
 		QtXlsxWriter
 		QSimpleUpdater
-		${LIBLAS_LIB}
+		${LIBLAS_LIBRARIES}
 		carve
 		# Python
 		${PYTHON_LIBRARIES}
-		${ZLIB_LIB}
+		${ZLIB_LIBRARIES}
 	)
 endif(OIP_USE_PREBUILD_EARLYBINDING_LIBS)
 
@@ -547,15 +581,15 @@ target_link_libraries( OpenInfraPlatform.UI
 	OpenInfraPlatform.Ifc4
 	Qt5::WinMain  # New target available via find_package ( Qt5Core )
 	# BlueFramework
-	${BLUEFRAMEWORK3_LIBRARIES}
+	${BLUEFRAMEWORK_LIBRARIES}
 	# External libs
 	QtXlsxWriter
 	QSimpleUpdater
-	${LIBLAS_LIB}
+	${LIBLAS_LIBRARIES}
 	carve
 	# Python
 	${PYTHON_LIBRARIES}
-	${ZLIB_LIB}
+	${ZLIB_LIBRARIES}
 )
 
 # Python35
@@ -646,7 +680,7 @@ if (WIN32)
 
 set_target_properties(CopyOpenInfraPlatformUIResources 			PROPERTIES FOLDER "Copy")
 set_target_properties(OklabiCopyBinaries						PROPERTIES FOLDER "Copy")
-set_target_properties(BlueFramework3CopyBinaries 				PROPERTIES FOLDER "Copy")
+set_target_properties(BlueFrameworkCopyBinaries 				PROPERTIES FOLDER "Copy")
 set_target_properties(Qt5CopyBinaries			 				PROPERTIES FOLDER "Copy")
 #set_target_properties(DirectXCopyBinaries		 				PROPERTIES FOLDER "Copy")
 set_target_properties(QSimpleUpdaterCopyBinaries				PROPERTIES FOLDER "Copy")
@@ -669,18 +703,6 @@ set_target_properties(OpenInfraPlatform.ExpressBinding		 	PROPERTIES FOLDER "Ope
 
 endif (WIN32)
 
-# http://annealingtechnologies.blogspot.de/2010/02/wix-and-cpack-integration.html
-# http://www.cmake.org/cmake/help/cmake_tutorial.html
-# http://stackoverflow.com/questions/18457044/what-is-the-cmake-configuration-for-wixproject
-# build a CPack driven installer package
-# include (InstallRequiredSystemLibraries)
-# set (CPACK_RESOURCE_FILE_LICENSE
-	 # "${CMAKE_CURRENT_SOURCE_DIR}/docs/licenses.txt")
-# set (CPACK_PACKAGE_VERSION_MAJOR "0")
-# set (CPACK_PACKAGE_VERSION_MINOR "1")
-# set (CPACK_GENERATOR "WIX")
-# set (CPACK_WIX_XSL ${YOUR_PACKAGE_SOURCE_DIR}/win.xsl)
-# include (CPack)
 
 if(WIN32)
 	if(MSVC12 OR MSVC14)
@@ -693,7 +715,7 @@ if(WIN32)
 			endif(MSVC12)
 
 			add_custom_target(UpdateOpenInfraPlatformLibsDebugSymbolsAndDLLs
-				COMMENT "Copying BlueFramework Libraries ..." VERBATIM
+				COMMENT "Copying OpenInfraPlatform Libraries ..." VERBATIM
 			)
 
 			add_custom_command(TARGET UpdateOpenInfraPlatformLibsDebugSymbolsAndDLLs COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Release/OpenInfraPlatform.Infrastructure.dll 						${BIN_DIR}OpenInfraPlatform.Infrastructure.dll VERBATIM)
@@ -802,20 +824,47 @@ set(CPACK_PACKAGE_VERSION_TEWAK "${PROJECT_VERSION_TWEAK}}")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "OpenInfraPlatform")
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
 set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.md")
+set(CPACK_WIX_UI_BANNER "${PROJECT_SOURCE_DIR}/Data/banner.bmp")
+set(CPACK_WIX_PRODUCT_ICON "${PROJECT_SOURCE_DIR}/src/OpenInfraPlatform/Resources/icons/icon.ico")
+set(CPACK_WIX_PROGRAM_MENU_FOLDER "TUM OpenInfraPlatform")
+set(CPACK_PACKAGE_EXECUTABLES OpenInfraPlatform.UI "TUM OpenInfraPlatform")
+
+#set(CPACK_WIX_PROPERTY_AdvancedWelcomeEulaDlgTitle "Test")
+#set(LOC_FILE "${PROJECT_SOURCE_DIR}/deploy/en-us.wxl")
+set(CPACK_WIX_CULTURES "en-us")
+#set(CPACK_WIX_LIGHT_EXTRA_FLAGS ${PROJECT_SOURCE_DIR}/deploy/en-us.wxl)
+#set(CPACK_WIX_EXTRA_SOURCES ${PROJECT_SOURCE_DIR}/deploy/UI_colors.wxs)
+#set(CPACK_WIX_EXTRA_OBJECTS ${PROJECT_SOURCE_DIR}/deploy/col.wixlib)
 
 include(CPackComponent)
 
-cpack_add_component(oip_runtime INSTALL_TYPES default)
-cpack_add_component(oip_import_libs INSTALL_TYPES default)
-cpack_add_component(oip_static_libs INSTALL_TYPES default)
-cpack_add_component(oip_data INSTALL_TYPES default)
-cpack_add_component(oip_thirdparty INSTALL_TYPES default)
+cpack_add_component(oip_runtime 	DISPLAY_NAME "Runtime" DESCRIPTION "Application runtime components (*.dll, *.exe)" REQUIRED INSTALL_TYPES default)
+cpack_add_component(oip_import_libs DISPLAY_NAME "Import libs" DESCRIPTION "Infrastructure import library (*.lib)" REQUIRED INSTALL_TYPES default)
+cpack_add_component(oip_static_libs DISPLAY_NAME "Static libs" DESCRIPTION "Infrastructure static library (*.lib)" REQUIRED INSTALL_TYPES default)
+cpack_add_component(oip_data 		DISPLAY_NAME "Application data" DESCRIPTION "Data required by the application" REQUIRED INSTALL_TYPES default)
+cpack_add_component(oip_thirdparty 	DISPLAY_NAME "Thirdparty libraries" DESCRIPTION "Thirdparty libraries required by the application" REQUIRED INSTALL_TYPES default)
 
 set(CPACK_COMPONENTS_ALL "oip_runtime;oip_import_libs;oip_static_libs;oip_data;oip_thirdparty")
 
 install(TARGETS OpenInfraPlatform.UI
    RUNTIME DESTINATION bin
    COMPONENT oip_runtime
+)
+
+find_file(MSVC_VCOMP_DLL NAMES vcomp140.dll PATHS ${WINDIR}/System32)
+find_file(MSVC_VCRUNTIME_DLL NAMES vcruntime140.dll PATHS ${WINDIR}/System32)
+find_file(MSVC_VCCORLIB_DLL NAMES vccorlib140.dll PATHS ${WINDIR}/System32)
+find_file(MSVC_MSVCP_DLL NAMES msvcp140.dll PATHS ${WINDIR}/System32)
+find_file(MSVC_MSVCP_WIN_DLL NAMES msvcp_win.dll PATHS ${WINDIR}/System32)
+find_file(MSVC_MSVCRT_DLL NAMES msvcrt.dll PATHS ${WINDIR}/System32)
+
+set(WINDOWS_RUNTIME_DLLS
+	${MSCV_VCOMP_DLL}
+	${MSCV_VCRUNTIME_DLL}
+	${MSCV_VCCORLIB_DLL}
+	${MSCV_MSVCP_DLL}
+	${MSCV_MSVCP_WIN_DLL}
+	${MSCV_MSVCRT_DLL}
 )
 
 macro(installData DATA)
@@ -832,8 +881,28 @@ installData(${CMAKE_BINARY_DIR}/res)
 installData(${CMAKE_BINARY_DIR}/fbliste)
 installData(${CMAKE_BINARY_DIR}/Style)
 		
-install(FILES ${BLUEFRAMEWORK3_RELEASE_BINARIES} ${OKLABI_DLLS} ${QT5_DLLS_RELEASE}
+install(FILES ${WINDOWS_RUNTIME_DLLS} ${BLUEFRAMEWORK_RELEASE_BINARIES} ${OKLABI_DLLS} ${QT5_DLLS_RELEASE} ${LIBLAS_RELEASE_BINARIES} ${GTEST_RELEASE_BINARIES}
 	DESTINATION bin
+	COMPONENT oip_thirdparty)
+	
+install(FILES ${Qt5_IMAGEFORMATS_PLUGINS_DLLS}
+		DESTINATION bin/plugins/imageformats
+		COMPONENT oip_thirdparty)
+		
+install(FILES ${Qt5_GEOSERVICES_PLUGINS_DLLS}
+	DESTINATION bin/plugins/geoservices
+	COMPONENT oip_thirdparty)
+
+install(FILES ${Qt5_PLATFORMS_PLUGINS_DLLS}
+	DESTINATION bin/platforms
+	COMPONENT oip_thirdparty)
+
+install(FILES ${Qt5_NETWORK_PLUGINS_DLLS}
+	DESTINATION bin/plugins/bearer
+	COMPONENT oip_thirdparty)
+	
+install(FILES ${Qt5_ICONENGINES_PLUGINS_DLLS}
+	DESTINATION bin/plugins/iconengines
 	COMPONENT oip_thirdparty)
 
 include(CPack)
