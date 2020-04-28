@@ -1,4 +1,9 @@
-# TUM Open Infra Platform
+# THIS REPOSITORY IS NOT MAINTAINED ANYMORE
+
+Please find the newest developments [in the new repository](https://github.com/tumcms/Open-Infra-Platform).
+
+
+# (Old) TUM Open Infra Platform
 
 ## Info
 
